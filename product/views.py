@@ -6,6 +6,7 @@ from .models import Category, Product, Review
 from .serializers import (
     CategoryListSerializer, CategoryDetailSerializer,
     ProductListSerializer, ProductDetailSerializer,
+    ProductWithReviewsSerializer,
     ReviewListSerializer, ReviewDetailSerializer,
 )
 
@@ -41,6 +42,13 @@ def product_detail_api_view(request, id):
     except Product.DoesNotExist:
         return Response(data={'message': 'product not found'}, status=status.HTTP_404_NOT_FOUND)
     data = ProductDetailSerializer(product, many=False).data
+    return Response(data=data)
+
+
+@api_view(['GET'])
+def product_reviews_api_view(request):
+    products = Product.objects.prefetch_related('review_set').all()
+    data = ProductWithReviewsSerializer(products, many=True).data
     return Response(data=data)
 
 
