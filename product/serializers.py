@@ -20,6 +20,10 @@ class CategoryDetailSerializer(serializers.ModelSerializer):
         fields = ['id', 'name']
 
 
+class CategoryValidateSerializer(serializers.Serializer):
+    name = serializers.CharField(min_length=1, max_length=255)
+
+
 class ReviewSerializer(serializers.ModelSerializer):
     class Meta:
         model = Review
@@ -36,6 +40,18 @@ class ProductDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = Product
         fields = ['id', 'title', 'description', 'price', 'category']
+
+
+class ProductValidateSerializer(serializers.Serializer):
+    title = serializers.CharField(min_length=1, max_length=255)
+    description = serializers.CharField()
+    price = serializers.DecimalField(max_digits=10, decimal_places=2)
+    category_id = serializers.IntegerField()
+
+    def validate_category_id(self, value):
+        if not Category.objects.filter(id=value).exists():
+            raise serializers.ValidationError('Category not found')
+        return value
 
 
 class ProductWithReviewsSerializer(serializers.ModelSerializer):
@@ -63,3 +79,14 @@ class ReviewDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = Review
         fields = ['id', 'text', 'stars', 'product']
+
+
+class ReviewValidateSerializer(serializers.Serializer):
+    text = serializers.CharField()
+    stars = serializers.IntegerField(min_value=1, max_value=5)
+    product_id = serializers.IntegerField()
+
+    def validate_product_id(self, value):
+        if not Product.objects.filter(id=value).exists():
+            raise serializers.ValidationError('Product not found')
+        return value
