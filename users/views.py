@@ -1,26 +1,25 @@
 import random
 
 from django.contrib.auth import authenticate
-from django.contrib.auth.models import User
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.authtoken.models import Token
 
-from .models import ConfirmationCode
-from .serializers import UserRegisterSerializer
+from .models import ConfirmationCode, CustomUser
+from .serializers import RegisterValidateSerializer, AuthValidateSerializer, ConfirmValidateSerializer
 
 
 class RegistrationView(APIView):
     def post(self, request):
-        serializer = UserRegisterSerializer(data=request.data)
+        serializer = RegisterValidateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        username = serializer.validated_data['username']
+        email = serializer.validated_data['email']
         password = serializer.validated_data['password']
 
-        user = User.objects.create_user(
-            username=username,
+        user = CustomUser.objects.create_user(
+            email=email,
             password=password,
             is_active=False,
         )
@@ -36,30 +35,49 @@ class RegistrationView(APIView):
 
 class AuthorizationView(APIView):
     def post(self, request):
-        username = request.data.get('username')
-        password = request.data.get('password')
+        serializer = AuthValidateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
 
-        user = authenticate(username=username, password=password)
+        user = authenticate(
+            username=serializer.validated_data['email'],
+            password=serializer.validated_data['password'],
+        )
+
         if user is not None:
-            try:
-                token = Token.objects.get(user=user)
-            except Token.DoesNotExist:
-                token = Token.objects.create(user=user)
+            if not user.is_active:
+                return Response(
+                    status=status.HTTP_401_UNAUTHORIZED,
+                    data={'error': 'User account is not activated yet!'}
+                )
+            token, _ = Token.objects.get_or_create(user=user)
             return Response(data={'key': token.key})
         return Response(status=status.HTTP_401_UNAUTHORIZED)
 
 
 class ConfirmView(APIView):
     def post(self, request):
-        code = request.data.get('code')
+        serializer = ConfirmValidateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        user_id = serializer.validated_data['user_id']
+        code = serializer.validated_data['code']
+
         try:
-            confirmation = ConfirmationCode.objects.get(code=code)
+            user = CustomUser.objects.get(id=user_id)
+        except CustomUser.DoesNotExist:
+            return Response(
+                status=status.HTTP_400_BAD_REQUEST,
+                data={'message': 'User not found!'}
+            )
+
+        try:
+            confirmation = ConfirmationCode.objects.get(user=user, code=code)
         except ConfirmationCode.DoesNotExist:
             return Response(
                 status=status.HTTP_400_BAD_REQUEST,
                 data={'message': 'Code is wrong!'}
             )
-        user = confirmation.user
+
         user.is_active = True
         user.save()
         confirmation.delete()
