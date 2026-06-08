@@ -1,30 +1,32 @@
 import random
 
-from django.contrib.auth import authenticate
+from django.contrib.auth import authenticate, get_user_model
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.authtoken.models import Token
 
-from .models import ConfirmationCode, CustomUser
-from .serializers import RegisterValidateSerializer, AuthValidateSerializer, ConfirmValidateSerializer
+from .models import ConfirmationCode
+from .serializers import UserCreateSerializer, UserAuthSerializer, ConfirmUserSerializer
+
+User = get_user_model()
 
 
 class RegistrationView(APIView):
     def post(self, request):
-        serializer = RegisterValidateSerializer(data=request.data)
+        serializer = UserCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
         email = serializer.validated_data['email']
         password = serializer.validated_data['password']
 
-        user = CustomUser.objects.create_user(
+        user = User.objects.create_user(
             email=email,
             password=password,
             is_active=False,
         )
 
-        code = str(random.randint(100000, 999999))
+        code = ''.join([str(random.randint(0, 9)) for _ in range(6)])
         ConfirmationCode.objects.create(user=user, code=code)
 
         return Response(
@@ -35,7 +37,7 @@ class RegistrationView(APIView):
 
 class AuthorizationView(APIView):
     def post(self, request):
-        serializer = AuthValidateSerializer(data=request.data)
+        serializer = UserAuthSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
         user = authenticate(
@@ -51,34 +53,14 @@ class AuthorizationView(APIView):
                 )
             token, _ = Token.objects.get_or_create(user=user)
             return Response(data={'key': token.key})
-        return Response(status=status.HTTP_401_UNAUTHORIZED)
+        return Response(status=status.HTTP_401_UNAUTHORIZED,
+                        data={'error': 'User credentials are wrong!'})
 
 
 class ConfirmView(APIView):
     def post(self, request):
-        serializer = ConfirmValidateSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-
-        user_id = serializer.validated_data['user_id']
-        code = serializer.validated_data['code']
-
-        try:
-            user = CustomUser.objects.get(id=user_id)
-        except CustomUser.DoesNotExist:
-            return Response(
-                status=status.HTTP_400_BAD_REQUEST,
-                data={'message': 'User not found!'}
-            )
-
-        try:
-            confirmation = ConfirmationCode.objects.get(user=user, code=code)
-        except ConfirmationCode.DoesNotExist:
-            return Response(
-                status=status.HTTP_400_BAD_REQUEST,
-                data={'message': 'Code is wrong!'}
-            )
-
-        user.is_active = True
-        user.save()
-        confirmation.delete()
-        return Response(data={'message': 'User confirmed successfully!'})
+        serializer = ConfirmUserSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(data={'message': 'User confirmed successfully!'})
+        return Response(status=status.HTTP_400_BAD_REQUEST, data=serializer.errors)
