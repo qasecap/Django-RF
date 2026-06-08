@@ -3,6 +3,7 @@ from rest_framework.response import Response
 from rest_framework import status
 
 from .models import Category, Product, Review
+from .permissions import IsModerator
 from .serializers import (
     CategoryListSerializer, CategoryDetailSerializer, CategoryValidateSerializer,
     ProductListSerializer, ProductDetailSerializer, ProductValidateSerializer,
@@ -57,6 +58,8 @@ class CategoryDetailView(APIView):
 
 
 class ProductListView(APIView):
+    permission_classes = [IsModerator]
+
     def get(self, request):
         products = Product.objects.all()
         return Response(data=ProductListSerializer(products, many=True).data)
@@ -70,6 +73,8 @@ class ProductListView(APIView):
 
 
 class ProductDetailView(APIView):
+    permission_classes = [IsModerator]
+
     def get_object(self, id):
         try:
             return Product.objects.get(id=id)
