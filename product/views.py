@@ -3,6 +3,7 @@ from rest_framework.response import Response
 from rest_framework import status
 
 from common.permissions import IsModerator
+from common.validators import validate_user_is_adult
 from .models import Category, Product, Review
 from .serializers import (
     CategoryListSerializer, CategoryDetailSerializer, CategoryValidateSerializer,
@@ -65,10 +66,12 @@ class ProductListView(APIView):
         return Response(data=ProductListSerializer(products, many=True).data)
 
     def post(self, request):
+        birthdate = request.auth.get('birthdate') if request.auth else None
+        validate_user_is_adult(birthdate)
         serializer = ProductValidateSerializer(data=request.data)
         if not serializer.is_valid():
             return Response(status=status.HTTP_400_BAD_REQUEST, data=serializer.errors)
-        product = Product.objects.create(**serializer.validated_data)
+        product = Product.objects.create(**serializer.validated_data, owner=request.user)
         return Response(status=status.HTTP_201_CREATED, data=ProductDetailSerializer(product).data)
 
 

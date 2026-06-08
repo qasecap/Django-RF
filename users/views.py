@@ -5,9 +5,10 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.authtoken.models import Token
+from rest_framework_simplejwt.views import TokenObtainPairView
 
 from .models import ConfirmationCode
-from .serializers import UserCreateSerializer, UserAuthSerializer, ConfirmUserSerializer
+from .serializers import UserCreateSerializer, UserAuthSerializer, ConfirmUserSerializer, CustomTokenObtainPairSerializer
 
 User = get_user_model()
 
@@ -19,11 +20,13 @@ class RegistrationView(APIView):
 
         email = serializer.validated_data['email']
         password = serializer.validated_data['password']
+        birthdate = serializer.validated_data.get('birthdate')
 
         user = User.objects.create_user(
             email=email,
             password=password,
             is_active=False,
+            birthdate=birthdate,
         )
 
         code = ''.join([str(random.randint(0, 9)) for _ in range(6)])
@@ -64,3 +67,7 @@ class ConfirmView(APIView):
             serializer.save()
             return Response(data={'message': 'User confirmed successfully!'})
         return Response(status=status.HTTP_400_BAD_REQUEST, data=serializer.errors)
+
+
+class CustomTokenObtainPairView(TokenObtainPairView):
+    serializer_class = CustomTokenObtainPairSerializer
