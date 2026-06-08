@@ -2,8 +2,8 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 
+from common.permissions import IsModerator
 from .models import Category, Product, Review
-from .permissions import IsModerator
 from .serializers import (
     CategoryListSerializer, CategoryDetailSerializer, CategoryValidateSerializer,
     ProductListSerializer, ProductDetailSerializer, ProductValidateSerializer,
