@@ -56,6 +56,10 @@ class ConfirmUserSerializer(serializers.Serializer):
         return user
 
 
+class OauthCodeSerializer(serializers.Serializer):
+    code = serializers.CharField()
+
+
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     @classmethod
     def get_token(cls, user):
