@@ -1,9 +1,8 @@
+from django.core.cache import cache
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 from django.contrib.auth import get_user_model
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
-
-from .models import ConfirmationCode
 
 User = get_user_model()
 
@@ -37,12 +36,11 @@ class ConfirmUserSerializer(serializers.Serializer):
         except User.DoesNotExist:
             raise serializers.ValidationError("User not found!")
 
-        try:
-            confirmation = ConfirmationCode.objects.get(user=user)
-        except ConfirmationCode.DoesNotExist:
+        cached_code = cache.get(f"confirmation_code:{email}")
+        if not cached_code:
             raise serializers.ValidationError("Confirmation code not found!")
 
-        if confirmation.code != code:
+        if cached_code != code:
             raise serializers.ValidationError("Code is wrong!")
 
         data['user'] = user
@@ -50,9 +48,10 @@ class ConfirmUserSerializer(serializers.Serializer):
 
     def save(self, **kwargs):
         user = self.validated_data['user']
+        email = self.validated_data['email']
         user.is_active = True
         user.save()
-        user.confirmation_code.delete()
+        cache.delete(f"confirmation_code:{email}")
         return user
 
 

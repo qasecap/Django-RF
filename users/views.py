@@ -1,13 +1,13 @@
 import random
 
 from django.contrib.auth import authenticate, get_user_model
+from django.core.cache import cache
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.authtoken.models import Token
 from rest_framework_simplejwt.views import TokenObtainPairView
 
-from .models import ConfirmationCode
 from .serializers import UserCreateSerializer, UserAuthSerializer, ConfirmUserSerializer, CustomTokenObtainPairSerializer
 
 User = get_user_model()
@@ -30,7 +30,7 @@ class RegistrationView(APIView):
         )
 
         code = ''.join([str(random.randint(0, 9)) for _ in range(6)])
-        ConfirmationCode.objects.create(user=user, code=code)
+        cache.set(f"confirmation_code:{email}", code, 60 * 5)
 
         return Response(
             status=status.HTTP_201_CREATED,
