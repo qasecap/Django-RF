@@ -32,6 +32,9 @@ class RegistrationView(APIView):
         code = ''.join([str(random.randint(0, 9)) for _ in range(6)])
         cache.set(f"confirmation_code:{email}", code, 60 * 5)
 
+        from users.tasks import send_confirmation_email
+        send_confirmation_email.delay(code, email)
+
         return Response(
             status=status.HTTP_201_CREATED,
             data={'user_id': user.id, 'code': code}
