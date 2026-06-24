@@ -11,11 +11,13 @@ click-plugins==1.1.1.2
 click-repl==0.3.0
 colorama==0.4.6
 Django==6.0.5
+django-cors-headers==4.9.0
 django-dotenv==1.4.2
 django-redis==7.0.0
 djangorestframework==3.17.1
 djangorestframework_simplejwt==5.5.1
 flower==2.0.1
+gunicorn==26.0.0
 humanize==4.15.0
 idna==3.18
 kombu==5.6.2
